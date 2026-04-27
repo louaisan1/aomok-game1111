@@ -16,8 +16,8 @@ import {
 import { recordResult } from '../firebase.js';
 import { DOOR_COLORS, colorHexToCss } from './colors.js';
 
-const INTERACT_RANGE = 2.6;
-const KEY_PICKUP_RANGE = 1.0;
+const INTERACT_RANGE = 3.2;
+const KEY_PICKUP_RANGE = 1.4;
 const TIMER_DURATION = 5 * 60 * 1000;
 
 export function startGame({ name, room, sessionId }) {
@@ -62,6 +62,17 @@ export function startGame({ name, room, sessionId }) {
   let inUnderwater = false;
   let interactionTarget = null;
 
+  // ?debug=keys gives all keys & opens nothing — useful for showcasing.
+  const params = new URLSearchParams(location.search);
+  if (params.get('debug') === 'keys') {
+    roomData.keys.forEach((k) => {
+      k.collected = true;
+      k.mesh.visible = false;
+      collectedKeys.add(k.index);
+      inventoryUI.collect(k.index);
+    });
+  }
+
   function pickRoom() { return inUnderwater ? underwater : roomData; }
 
   function collide(pos, radius) {
@@ -97,8 +108,18 @@ export function startGame({ name, room, sessionId }) {
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'e' || e.key === 'Enter') {
+    const k = e.key;
+    const lk = k.toLowerCase();
+    if (lk === 'e') {
       if (interactionTarget) interact(interactionTarget);
+    } else if (k === 'Enter') {
+      // Submit the current equation
+      equationUI.handleSubmit();
+    } else if (k === 'Backspace') {
+      e.preventDefault();
+      equationUI.removeLast();
+    } else if (lk === 'c') {
+      equationUI.clear();
     }
   });
 
@@ -265,10 +286,12 @@ export function startGame({ name, room, sessionId }) {
       // Trapdoor
       consider({ type: 'trapdoor' }, roomData.trapdoor.position.clone().add(new THREE.Vector3(0, 0.5, 0)), INTERACT_RANGE);
 
-      // Auto-pickup very close keys (no need to look at them)
+      // Auto-pickup very close keys (horizontal distance only).
       roomData.keys.forEach((k) => {
         if (k.collected) return;
-        const d = camPos.distanceTo(k.mesh.position);
+        const dx = camPos.x - k.mesh.position.x;
+        const dz = camPos.z - k.mesh.position.z;
+        const d = Math.hypot(dx, dz);
         if (d < KEY_PICKUP_RANGE) collectKey(k);
       });
     } else {

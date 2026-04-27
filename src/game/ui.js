@@ -60,6 +60,18 @@ export class EquationUI {
   addOpenedDoor(door) {
     if (this.openedDoors.find((d) => d.index === door.index)) return;
     this.openedDoors.push({ index: door.index, token: door.token, color: door.color });
+    // Auto-append to expression in the order doors were opened.
+    this.tokens.push(door.token);
+    this._render();
+  }
+
+  removeLast() {
+    if (!this.tokens.length) return;
+    this.tokens.pop();
+    this._render();
+  }
+  clear() {
+    this.tokens = [];
     this._render();
   }
 

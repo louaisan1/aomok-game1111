@@ -35,14 +35,14 @@ export function createCamera() {
 }
 
 export function addBaseLighting(scene) {
-  const ambient = new THREE.AmbientLight(0xffffff, 0.32);
+  const ambient = new THREE.AmbientLight(0xffffff, 0.55);
   scene.add(ambient);
 
-  const hemi = new THREE.HemisphereLight(0xfff1d6, 0x2a2a3a, 0.55);
+  const hemi = new THREE.HemisphereLight(0xfff1d6, 0x2a2a3a, 0.85);
   scene.add(hemi);
 
   // Warm overhead chandelier
-  const overhead = new THREE.PointLight(0xffd9a8, 2.6, 30, 1.4);
+  const overhead = new THREE.PointLight(0xffd9a8, 3.2, 32, 1.2);
   overhead.position.set(0, 5.4, 0);
   overhead.castShadow = true;
   overhead.shadow.mapSize.set(1024, 1024);
