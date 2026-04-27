@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a0a14" />
+    <title>غرفة الأبواب العشرة — = 7</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <!-- Registration overlay -->
+    <div id="register-overlay" class="overlay">
+      <div class="panel">
+        <h1>غرفة الأبواب العشرة</h1>
+        <p class="lead">
+          اكتب اسمك ورقم الغرفة، ثم اعثر على المفاتيح وافتح الأبواب التي
+          تشكّل معادلة <b>= 7</b> قبل أن يداهمك الماء!
+        </p>
+        <form id="register-form">
+          <label>
+            <span>الاسم</span>
+            <input id="player-name" type="text" required minlength="2" maxlength="24" autocomplete="off" />
+          </label>
+          <label>
+            <span>رقم الغرفة</span>
+            <input id="room-number" type="number" min="1" max="9999" required value="1" />
+          </label>
+          <button type="submit" id="enter-btn">ادخل الغرفة</button>
+          <p class="hint" id="register-status"></p>
+        </form>
+      </div>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <div id="hud-top">
+        <div id="player-info">
+          <span id="hud-name"></span>
+          <span class="dot">•</span>
+          <span>غرفة <b id="hud-room"></b></span>
+        </div>
+        <div id="timer-wrap" class="hidden">
+          <span class="timer-label">الوقت قبل الغرق</span>
+          <span id="timer">05:00</span>
+        </div>
+      </div>
+      <div id="inventory">
+        <div class="inv-title">المفاتيح</div>
+        <div id="keys-row"></div>
+      </div>
+      <div id="equation-bar">
+        <div class="eq-title">الأبواب المفتوحة (شكّل المعادلة):</div>
+        <div id="equation-text">—</div>
+        <div id="equation-result"></div>
+        <button id="submit-eq" disabled>تأكيد = 7</button>
+      </div>
+      <div id="prompt" class="prompt hidden"></div>
+      <div id="crosshair">+</div>
+    </div>
+
+    <!-- Result overlay -->
+    <div id="result-overlay" class="overlay hidden">
+      <div class="panel">
+        <h1 id="result-title">—</h1>
+        <p id="result-text"></p>
+        <button id="result-restart">العب مرة أخرى</button>
+      </div>
+    </div>
+
+    <canvas id="game-canvas"></canvas>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
