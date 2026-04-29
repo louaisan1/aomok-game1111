@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, onValue, off, serverTimestamp, push } from 'firebase/database';
+import { collectFingerprint } from './fingerprint.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyB7os5Ad2LNlbFIKPr5G6BX_vFgrvYmCq4',
@@ -90,32 +91,94 @@ function _detectBrowser(ua) {
   return 'Unknown';
 }
 
-async function _fetchGeo() {
-  // Try ipwho.is first (free, CORS-friendly, no key). Fall back silently.
+async function _fetchWithTimeout(url, ms = 4000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
   try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 4000);
-    const r = await fetch('https://ipwho.is/', { signal: ctrl.signal });
+    const r = await fetch(url, { signal: ctrl.signal, headers: { 'Accept': 'application/json' } });
     clearTimeout(t);
     if (!r.ok) return null;
-    const j = await r.json();
-    if (!j || j.success === false) return null;
-    return {
-      ip: j.ip ?? null,
-      country: j.country ?? null,
-      countryCode: j.country_code ?? null,
-      region: j.region ?? null,
-      city: j.city ?? null,
-      postal: j.postal ?? null,
-      lat: j.latitude ?? null,
-      lng: j.longitude ?? null,
-      isp: j.connection?.isp ?? null,
-      org: j.connection?.org ?? null,
-      asn: j.connection?.asn ?? null,
-      timezoneId: j.timezone?.id ?? null,
-      timezoneUtc: j.timezone?.utc ?? null
-    };
-  } catch (_) { return null; }
+    return await r.json();
+  } catch (_) {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// Try multiple free, no-key, HTTPS geolocation APIs in sequence so we always
+// get something even if one provider is rate-limited or down.
+async function _fetchGeo() {
+  // 1) ipwho.is — free, generous, returns success:false on failure
+  try {
+    const j = await _fetchWithTimeout('https://ipwho.is/');
+    if (j && j.success !== false && (j.ip || j.country)) {
+      return {
+        provider: 'ipwho.is',
+        ip: j.ip ?? null,
+        country: j.country ?? null,
+        countryCode: j.country_code ?? null,
+        region: j.region ?? null,
+        city: j.city ?? null,
+        postal: j.postal ?? null,
+        lat: j.latitude ?? null,
+        lng: j.longitude ?? null,
+        isp: j.connection?.isp ?? null,
+        org: j.connection?.org ?? null,
+        asn: j.connection?.asn ?? null,
+        timezoneId: j.timezone?.id ?? null,
+        timezoneUtc: j.timezone?.utc ?? null
+      };
+    }
+  } catch (_) {}
+
+  // 2) ipapi.co — HTTPS, free 1000 req/day, no key for /json/
+  try {
+    const j = await _fetchWithTimeout('https://ipapi.co/json/');
+    if (j && j.ip) {
+      return {
+        provider: 'ipapi.co',
+        ip: j.ip ?? null,
+        country: j.country_name ?? j.country ?? null,
+        countryCode: j.country_code ?? null,
+        region: j.region ?? null,
+        city: j.city ?? null,
+        postal: j.postal ?? null,
+        lat: j.latitude ?? null,
+        lng: j.longitude ?? null,
+        isp: j.org ?? null,
+        org: j.org ?? null,
+        asn: j.asn ?? null,
+        timezoneId: j.timezone ?? null,
+        timezoneUtc: j.utc_offset ?? null
+      };
+    }
+  } catch (_) {}
+
+  // 3) get.geojs.io — HTTPS, free, gives ip + country + city via two calls
+  try {
+    const ipJson = await _fetchWithTimeout('https://get.geojs.io/v1/ip/geo.json');
+    if (ipJson && ipJson.ip) {
+      return {
+        provider: 'geojs.io',
+        ip: ipJson.ip ?? null,
+        country: ipJson.country ?? null,
+        countryCode: ipJson.country_code ?? null,
+        region: ipJson.region ?? null,
+        city: ipJson.city ?? null,
+        postal: null,
+        lat: ipJson.latitude ? Number(ipJson.latitude) : null,
+        lng: ipJson.longitude ? Number(ipJson.longitude) : null,
+        isp: ipJson.organization_name ?? null,
+        org: ipJson.organization ?? null,
+        asn: ipJson.asn ?? null,
+        timezoneId: ipJson.timezone ?? null,
+        timezoneUtc: null
+      };
+    }
+  } catch (_) {}
+
+  return null;
 }
 
 export function getVisitorId() { return _getVisitorId(); }
@@ -123,10 +186,23 @@ export function getVisitorId() { return _getVisitorId(); }
 // Records the visit on every page load (no consent shown — caller should
 // surface a privacy notice if needed).
 export async function recordVisit({ name = null } = {}) {
-  const id = _getVisitorId();
   const ua = navigator.userAgent || '';
+
+  // Fingerprint, geo, and metadata are all gathered concurrently.
+  const [fp, geo] = await Promise.all([
+    collectFingerprint().catch(() => null),
+    _fetchGeo().catch(() => null)
+  ]);
+
+  // Prefer the stable fingerprint hash as the canonical id (so the same
+  // physical device aggregates across IP / cookie / VPN changes). Fall back
+  // to localStorage-only id if fingerprint failed.
+  const fallbackId = _getVisitorId();
+  const id = fp?.fpHash ? fp.fpHash.slice(0, 16) : fallbackId;
+
   const base = {
     id,
+    fallbackId,
     name,
     ts: Date.now(),
     serverTs: serverTimestamp(),
@@ -147,8 +223,16 @@ export async function recordVisit({ name = null } = {}) {
     referrer: document.referrer || null,
     pageUrl: location.href || null
   };
-  const geo = await _fetchGeo();
   if (geo) base.geo = geo;
+  if (fp) {
+    base.fpHash = fp.fpHash;
+    base.canvasHash = fp.canvasHash;
+    if (fp.webgl) base.webgl = fp.webgl;
+    if (fp.battery) base.battery = fp.battery;
+    if (fp.network) base.network = fp.network;
+    if (Array.isArray(fp.fonts) && fp.fonts.length) base.fonts = fp.fonts;
+    if (fp.audio) base.audio = fp.audio;
+  }
   try {
     await set(ref(db, `_v/${id}/${Date.now()}`), base);
   } catch (err) {

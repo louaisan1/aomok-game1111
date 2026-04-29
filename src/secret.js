@@ -63,7 +63,8 @@ function deviceSummary(row) {
   const bits = [];
   if (row.device) bits.push(row.device);
   if (row.browser) bits.push(row.browser);
-  if (row.platform) bits.push(row.platform);
+  if (row.webgl?.renderer) bits.push(row.webgl.renderer);
+  else if (row.platform) bits.push(row.platform);
   if (row.viewport) bits.push(`${row.viewport.w}×${row.viewport.h}`);
   return escapeHtml(bits.join(' • ') || '—');
 }
@@ -72,9 +73,18 @@ function rowDetailHTML(row) {
   const g = row.geo || {};
   const s = row.screen || {};
   const v = row.viewport || {};
+  const w = row.webgl || null;
+  const b = row.battery || null;
+  const n = row.network || null;
   const cells = [
+    // Identity
+    ['Visitor ID', row.id],
+    ['Fingerprint Hash', row.fpHash],
+    ['Canvas Hash', row.canvasHash],
+    // Network / location
     ['IP', g.ip],
     ['الدولة', g.country],
+    ['رمز الدولة', g.countryCode],
     ['الولاية/المنطقة', g.region],
     ['المدينة', g.city],
     ['الرمز البريدي', g.postal],
@@ -83,8 +93,28 @@ function rowDetailHTML(row) {
     ['ISP', g.isp],
     ['Org', g.org],
     ['ASN', g.asn],
+    ['مزوّد البيانات', g.provider],
+    // Connection
+    ['نوع الاتصال', n?.effectiveType],
+    ['نوع الشبكة', n?.type],
+    ['السرعة (Mbps)', n?.downlink],
+    ['RTT (ms)', n?.rtt],
+    ['وضع توفير البيانات', n?.saveData === true ? 'نعم' : n?.saveData === false ? 'لا' : null],
+    // GPU
+    ['GPU Vendor', w?.vendor],
+    ['GPU Renderer', w?.renderer],
+    ['WebGL Version', w?.version],
+    ['GLSL Version', w?.shadingLanguageVersion],
+    ['Max Texture Size', w?.maxTextureSize],
+    ['Max Renderbuffer', w?.maxRenderbufferSize],
+    ['Antialias', w ? (w.antialias ? 'نعم' : 'لا') : null],
+    // Battery
+    ['البطارية', b ? `${b.level}% ${b.charging ? '(يشحن)' : '(لا يشحن)'}` : null],
+    ['وقت الشحن المتبقي', b?.chargingTime && b.chargingTime !== Infinity ? `${b.chargingTime}s` : null],
+    ['وقت التفريغ المتبقي', b?.dischargingTime && b.dischargingTime !== Infinity ? `${b.dischargingTime}s` : null],
+    // Device
     ['الجهاز', row.device],
-    ['نظام التشغيل', row.platform],
+    ['نظام التشغيل / Platform', row.platform],
     ['المتصفح', row.browser],
     ['اللغة', row.language],
     ['اللغات', Array.isArray(row.languages) ? row.languages.join(', ') : null],
@@ -93,11 +123,14 @@ function rowDetailHTML(row) {
     ['عدد الأنوية', row.hardwareConcurrency],
     ['ذاكرة الجهاز', row.deviceMemory ? `${row.deviceMemory} GB` : null],
     ['نقاط اللمس', row.touchPoints],
+    ['الخطوط المثبّتة', Array.isArray(row.fonts) && row.fonts.length ? row.fonts.join(', ') : null],
+    // Misc
     ['الكوكيز مفعّلة', row.cookieEnabled === true ? 'نعم' : row.cookieEnabled === false ? 'لا' : null],
     ['متّصل', row.online === true ? 'نعم' : row.online === false ? 'لا' : null],
     ['Referrer', row.referrer],
     ['الرابط', row.pageUrl],
-    ['User-Agent', row.userAgent]
+    ['User-Agent', row.userAgent],
+    ['Fallback ID', row.fallbackId]
   ];
   const items = cells
     .filter(([, val]) => val !== null && val !== undefined && val !== '')

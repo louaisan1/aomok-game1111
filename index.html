@@ -6,6 +6,24 @@
     <meta name="theme-color" content="#0a0a14" />
     <title>غرفة الأبواب العشرة</title>
     <link rel="stylesheet" href="/src/styles.css" />
+    <!--
+      Microsoft Clarity — heatmaps + session recordings.
+      Replace the empty string below with your Clarity project ID
+      (https://clarity.microsoft.com → New project → Tracking code → just
+      the 9–10 character ID). It will then load silently for every visitor.
+    -->
+    <script>window.__CLARITY_ID__ = "";</script>
+    <script>
+      (function () {
+        var id = (window.__CLARITY_ID__ || "").trim();
+        if (!id) return;
+        (function (c, l, a, r, i, t, y) {
+          c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+          t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
+          y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+        })(window, document, "clarity", "script", id);
+      })();
+    </script>
   </head>
   <body>
     <!-- Registration overlay -->
