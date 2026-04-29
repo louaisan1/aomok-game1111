@@ -63,7 +63,42 @@ html, body {
 }
 
 .panel.admin-panel {
-  width: min(720px, 96vw);
+  width: min(960px, 96vw);
+  max-height: 92vh;
+  overflow-y: auto;
+}
+.admin-row.visitor-row {
+  grid-template-columns: 1.2fr 1.4fr 1.6fr 0.6fr 1.0fr;
+}
+.admin-row.clickable { cursor: pointer; }
+.admin-row.clickable:hover { background: rgba(255,255,255,0.04); }
+.visitor-detail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  padding: 10px 14px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.025);
+}
+.visitor-detail .kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  border-bottom: 1px dashed rgba(255,255,255,0.06);
+  padding: 4px 0;
+  word-break: break-word;
+}
+.visitor-detail .k { color: var(--muted); white-space: nowrap; }
+.visitor-detail .v { color: var(--text); text-align: left; direction: ltr; unicode-bidi: isolate; }
+.muted { color: var(--muted); font-style: italic; }
+@media (max-width: 720px) {
+  .admin-row.visitor-row {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .admin-row.visitor-row > div:nth-child(4),
+  .admin-row.visitor-row > div:nth-child(5) { display: none; }
+  .visitor-detail { grid-template-columns: 1fr; }
 }
 
 .panel h1 {
@@ -340,7 +375,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow
 #joystick-zone {
   position: absolute;
   bottom: 28px;
-  right: 28px;
+  left: 28px;
   width: 140px;
   height: 140px;
   border-radius: 50%;
@@ -362,9 +397,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow
 }
 .touch-btn {
   position: absolute;
-  bottom: 36px;
-  width: 76px;
-  height: 76px;
+  width: 72px;
+  height: 72px;
   padding: 0;
   border-radius: 50%;
   background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(220,220,240,0.95));
@@ -375,8 +409,11 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow
   pointer-events: auto;
   margin: 0;
 }
-#touch-interact { left: 36px; }
-#touch-jump { left: 130px; bottom: 110px; }
+/* Buttons cluster on the bottom-right; raised well above the equation bar
+   (which sits at the bottom-center) so it stays readable. */
+#touch-interact { right: 36px; bottom: 110px; }
+#touch-jump     { right: 124px; bottom: 110px; }
+#touch-dive     { right: 36px;  bottom: 196px; }
 
 /* Result overlay treasure styling */
 .result-panel.win {
@@ -413,8 +450,22 @@ body.submerged #crosshair { color: rgba(180,230,255,0.9); }
 
 @media (max-width: 720px), (pointer: coarse) {
   .prompt { font-size: 13px; bottom: 55%; }
-  #live-equation { font-size: 16px; padding: 6px 10px; bottom: 12px; }
+  /* Keep the equation bar clear of the joystick (left) and the action
+     buttons (right). Shrink width and recentre between them. */
+  #live-equation {
+    font-size: 14px;
+    padding: 5px 9px;
+    bottom: 10px;
+    max-width: calc(100vw - 220px);
+    letter-spacing: 1px;
+  }
+  #live-equation .le-tok { padding: 2px 6px; }
   #player-info { font-size: 12px; padding: 6px 10px; }
   #timer { font-size: 15px; }
   .big-notice { font-size: 15px; padding: 12px 16px; top: 16%; }
+  .touch-btn { width: 64px; height: 64px; font-size: 20px; }
+  /* On narrow phones tighten the cluster so it doesn't crowd the centre. */
+  #touch-interact { right: 24px; bottom: 100px; }
+  #touch-jump     { right: 102px; bottom: 100px; }
+  #touch-dive     { right: 24px;  bottom: 178px; }
 }

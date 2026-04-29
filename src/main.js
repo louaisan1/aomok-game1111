@@ -1,6 +1,10 @@
-import { recordSession } from './firebase.js';
+import { recordSession, recordVisit } from './firebase.js';
 import { startGame } from './game/game.js';
 import { isAdmin, showAdminDashboard } from './admin.js';
+import { isSpecialMode, showSpecialDashboard } from './secret.js';
+
+// Log every page open. Fires once per load; does not block UI.
+recordVisit().catch(() => {});
 
 const form = document.getElementById('register-form');
 const status = document.getElementById('register-status');
@@ -20,6 +24,18 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
+  // Hidden gate (no plaintext name appears in source — see secret.js).
+  if (await isSpecialMode(name)) {
+    document.getElementById('register-overlay').classList.add('hidden');
+    showSpecialDashboard({
+      onBack: () => {
+        document.getElementById('register-overlay').classList.remove('hidden');
+        setStatus('');
+      }
+    });
+    return;
+  }
+
   if (isAdmin(name)) {
     document.getElementById('register-overlay').classList.add('hidden');
     showAdminDashboard({
@@ -31,6 +47,9 @@ form.addEventListener('submit', async (e) => {
     });
     return;
   }
+
+  // Re-log this visit with the player's name attached.
+  recordVisit({ name }).catch(() => {});
 
   const btn = document.getElementById('enter-btn');
   btn.disabled = true;
