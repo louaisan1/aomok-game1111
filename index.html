@@ -2,9 +2,9 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <meta name="theme-color" content="#0a0a14" />
-    <title>غرفة الأبواب العشرة — = 7</title>
+    <title>غرفة الأبواب العشرة</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
@@ -13,13 +13,12 @@
       <div class="panel">
         <h1>غرفة الأبواب العشرة</h1>
         <p class="lead">
-          اكتب اسمك ورقم الغرفة، ثم اعثر على المفاتيح وافتح الأبواب التي
-          تشكّل معادلة <b>= 7</b> قبل أن يداهمك الماء!
+          اكتب اسمك ورقم الغرفة، ثم استكشف ما بداخلها.
         </p>
         <form id="register-form">
           <label>
             <span>الاسم</span>
-            <input id="player-name" type="text" required minlength="2" maxlength="24" autocomplete="off" />
+            <input id="player-name" type="text" required minlength="2" maxlength="32" autocomplete="off" />
           </label>
           <label>
             <span>رقم الغرفة</span>
@@ -28,6 +27,17 @@
           <button type="submit" id="enter-btn">ادخل الغرفة</button>
           <p class="hint" id="register-status"></p>
         </form>
+      </div>
+    </div>
+
+    <!-- Admin dashboard overlay -->
+    <div id="admin-overlay" class="overlay hidden">
+      <div class="panel admin-panel">
+        <h1>لوحة الإدارة — غرفة <span id="admin-room"></span></h1>
+        <p class="lead">قائمة اللاعبين والنتائج لهذه الغرفة (تتحدّث مباشرة).</p>
+        <div id="admin-stats"></div>
+        <div id="admin-list"></div>
+        <button id="admin-back">العودة</button>
       </div>
     </div>
 
@@ -44,24 +54,26 @@
           <span id="timer">05:00</span>
         </div>
       </div>
-      <div id="inventory">
-        <div class="inv-title">المفاتيح</div>
-        <div id="keys-row"></div>
-      </div>
-      <div id="equation-bar">
-        <div class="eq-title">معادلتك (تُبنى تلقائيًا حسب ترتيب فتح الأبواب)</div>
-        <div id="equation-text">—</div>
-        <div id="equation-result"></div>
-        <div class="eq-hint">Enter للتأكيد · Backspace للحذف · C لمسح الكل</div>
-        <button id="submit-eq" disabled>تأكيد = 7</button>
+      <div id="live-equation" class="hidden">
+        <span class="le-label">معادلتك الآن</span>
+        <span id="le-tokens"></span>
       </div>
       <div id="prompt" class="prompt hidden"></div>
+      <div id="big-notice" class="big-notice hidden"></div>
       <div id="crosshair">+</div>
+
+      <!-- Touch controls (shown on touch devices only) -->
+      <div id="touch-ui" class="hidden">
+        <div id="joystick-zone"><div id="joystick-thumb"></div></div>
+        <button id="touch-interact" class="touch-btn">E</button>
+        <button id="touch-jump" class="touch-btn">↑</button>
+        <button id="touch-dive" class="touch-btn hidden">↓</button>
+      </div>
     </div>
 
     <!-- Result overlay -->
     <div id="result-overlay" class="overlay hidden">
-      <div class="panel">
+      <div class="panel result-panel">
         <h1 id="result-title">—</h1>
         <p id="result-text"></p>
         <button id="result-restart">العب مرة أخرى</button>

@@ -1,5 +1,6 @@
 import { recordSession } from './firebase.js';
 import { startGame } from './game/game.js';
+import { isAdmin, showAdminDashboard } from './admin.js';
 
 const form = document.getElementById('register-form');
 const status = document.getElementById('register-status');
@@ -19,9 +20,21 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
+  if (isAdmin(name)) {
+    document.getElementById('register-overlay').classList.add('hidden');
+    showAdminDashboard({
+      room: Number(room),
+      onBack: () => {
+        document.getElementById('register-overlay').classList.remove('hidden');
+        setStatus('');
+      }
+    });
+    return;
+  }
+
   const btn = document.getElementById('enter-btn');
   btn.disabled = true;
-  setStatus('جاري الاتصال بـ Firebase…');
+  setStatus('جاري الاتصال…');
 
   let sessionId = null;
   try {
@@ -30,9 +43,9 @@ form.addEventListener('submit', async (e) => {
       new Promise((res) => setTimeout(() => res(null), 4000))
     ]);
     if (sessionId) {
-      setStatus('تم التسجيل. لحظة من فضلك…', 'ok');
+      setStatus('لحظة من فضلك…', 'ok');
     } else {
-      setStatus('سيبدأ اللعب في وضع غير متصل (تخطّي تسجيل Firebase).', 'ok');
+      setStatus('سيبدأ اللعب في وضع غير متصل.', 'ok');
     }
   } catch (err) {
     console.warn('Firebase issue:', err);

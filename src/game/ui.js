@@ -1,216 +1,225 @@
-import { evaluateTokens, TOKEN_OPS } from '../equation.js';
-import { colorHexToCss } from './colors.js';
-
 export function setupHUD({ name, room }) {
   document.getElementById('hud-name').textContent = name;
   document.getElementById('hud-room').textContent = String(room);
   document.getElementById('hud').classList.remove('hidden');
 }
 
-export function showRegister(show = true) {
-  document.getElementById('register-overlay').classList.toggle('hidden', !show);
+// Live equation display: shows current open-order tokens.
+export function updateLiveEquation(openOrder, doors) {
+  const el = document.getElementById('live-equation');
+  const tokens = document.getElementById('le-tokens');
+  if (!openOrder || openOrder.length === 0) {
+    el.classList.add('hidden');
+    tokens.innerHTML = '';
+    return;
+  }
+  el.classList.remove('hidden');
+  tokens.innerHTML = '';
+  openOrder.forEach((doorIndex) => {
+    const d = doors[doorIndex];
+    const t = d.token;
+    const display = t === '*' ? '×' : t === '/' ? '÷' : t;
+    const span = document.createElement('span');
+    span.className = 'le-tok';
+    span.innerHTML = `${display}<small>${doorIndex + 1}</small>`;
+    tokens.appendChild(span);
+  });
 }
 
-export function showResult({ won, equation, value, message }) {
+export function showResult({ won, name, equation, value, message }) {
   const overlay = document.getElementById('result-overlay');
   overlay.classList.remove('hidden');
-  document.getElementById('result-title').textContent = won ? 'فزت!' : 'خسرت';
-  const t = won
-    ? `أحسنت! المعادلة: ${equation || ''} = ${value}`
-    : (message || 'انتهى الوقت أو المعادلة غير صحيحة.');
-  document.getElementById('result-text').textContent = t;
+  const panel = overlay.querySelector('.panel');
+  panel.classList.remove('win', 'lose');
+  panel.classList.add(won ? 'win' : 'lose');
+  document.getElementById('result-title').textContent = won
+    ? `🏆 مبروك ${name}!`
+    : 'انتهت اللعبة';
+  const safeName = escapeHtml(name);
+  const safeEq = escapeHtml(equation || '');
+  const safeMsg = escapeHtml(message || 'انتهى الوقت قبل أن تجد الحل.');
+  // Wrap the equation in an LTR-isolated span so it always reads left-to-right
+  // regardless of the page's RTL context.
+  const html = won
+    ? `أحسنت ${safeName}! انفتحت لك غرفة الكنز.${equation ? ` المعادلة: <span class="ltr-eq">${safeEq} = ${value}</span>` : ''}`
+    : safeMsg;
+  document.getElementById('result-text').innerHTML = html;
 }
 
-export class InventoryUI {
-  constructor() {
-    this.row = document.getElementById('keys-row');
-    this.chips = new Map(); // index -> element
-  }
-  registerKeys(colors) {
-    this.row.innerHTML = '';
-    colors.forEach((c, i) => {
-      const chip = document.createElement('div');
-      chip.className = 'key-chip dim';
-      chip.style.background = colorHexToCss(c.hex);
-      chip.title = c.name;
-      this.row.appendChild(chip);
-      this.chips.set(i, chip);
-    });
-  }
-  collect(index) {
-    const chip = this.chips.get(index);
-    if (chip) chip.classList.remove('dim');
-  }
-}
-
-export class EquationUI {
-  constructor({ onSubmit }) {
-    this.text = document.getElementById('equation-text');
-    this.result = document.getElementById('equation-result');
-    this.submit = document.getElementById('submit-eq');
-    this.tokens = []; // selected expression tokens
-    this.openedDoors = []; // [{ index, token, color }]
-    this.onSubmit = onSubmit;
-    this.submit.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.handleSubmit();
-    });
-  }
-
-  addOpenedDoor(door) {
-    if (this.openedDoors.find((d) => d.index === door.index)) return;
-    this.openedDoors.push({ index: door.index, token: door.token, color: door.color });
-    // Auto-append to expression in the order doors were opened.
-    this.tokens.push(door.token);
-    this._render();
-  }
-
-  removeLast() {
-    if (!this.tokens.length) return;
-    this.tokens.pop();
-    this._render();
-  }
-  clear() {
-    this.tokens = [];
-    this._render();
-  }
-
-  handleSubmit() {
-    if (!this.tokens.length) return;
-    const value = evaluateTokens(this.tokens);
-    if (this.onSubmit) this.onSubmit(this.tokens, value);
-  }
-
-  reset() {
-    this.tokens = [];
-    this.openedDoors = [];
-    this._render();
-  }
-
-  _render() {
-    // Display selected expression first, then a list of opened tokens to click.
-    this.text.innerHTML = '';
-    if (this.tokens.length === 0) {
-      const placeholder = document.createElement('span');
-      placeholder.style.opacity = '0.5';
-      placeholder.textContent = 'انقر على الرموز ↓';
-      this.text.appendChild(placeholder);
-    } else {
-      this.tokens.forEach((tk, i) => {
-        const span = document.createElement('span');
-        span.style.margin = '0 4px';
-        span.textContent = tk === '*' ? '×' : tk === '/' ? '÷' : tk;
-        this.text.appendChild(span);
-      });
-      // Backspace
-      const back = document.createElement('button');
-      back.style.marginInlineStart = '8px';
-      back.style.padding = '2px 8px';
-      back.style.fontSize = '12px';
-      back.textContent = '⌫';
-      back.onclick = (e) => { e.stopPropagation(); this.tokens.pop(); this._render(); };
-      this.text.appendChild(back);
-    }
-
-    // Render opened-door chips below
-    let chipsRow = document.getElementById('opened-chips');
-    if (!chipsRow) {
-      chipsRow = document.createElement('div');
-      chipsRow.id = 'opened-chips';
-      chipsRow.style.display = 'flex';
-      chipsRow.style.flexWrap = 'wrap';
-      chipsRow.style.gap = '6px';
-      chipsRow.style.justifyContent = 'center';
-      chipsRow.style.margin = '6px 0';
-      this.text.parentElement.insertBefore(chipsRow, this.result);
-    }
-    chipsRow.innerHTML = '';
-    this.openedDoors.forEach((d) => {
-      const btn = document.createElement('button');
-      btn.style.padding = '4px 10px';
-      btn.style.fontSize = '14px';
-      btn.style.background = colorHexToCss(d.color.hex);
-      btn.style.color = '#0a0a14';
-      btn.style.borderRadius = '8px';
-      btn.style.fontWeight = '700';
-      const t = d.token;
-      btn.textContent = (t === '*') ? '×' : (t === '/') ? '÷' : t;
-      btn.title = `الباب ${d.index + 1}: ${t}`;
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        // Validate token alternation gently — but allow any insertion (player can backspace).
-        this.tokens.push(d.token);
-        this._render();
-      };
-      chipsRow.appendChild(btn);
-    });
-
-    // Live evaluation
-    const v = evaluateTokens(this.tokens);
-    if (v === null) {
-      this.result.textContent = this.tokens.length ? '… المعادلة غير مكتملة' : '';
-      this.submit.disabled = true;
-    } else {
-      const rounded = Math.round(v * 1000) / 1000;
-      this.result.textContent = `النتيجة: ${rounded}`;
-      this.submit.disabled = false;
-    }
-  }
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export class TimerUI {
-  constructor(durationMs, { onExpire } = {}) {
-    this.duration = durationMs;
-    this.start = null;
+  constructor({ durationMs, onTimeout }) {
+    this.durationMs = durationMs;
+    this.onTimeout = onTimeout;
+    this.startedAt = null;
+    this.endedAt = null;
     this.expired = false;
-    this.onExpire = onExpire;
     this.el = document.getElementById('timer');
     this.wrap = document.getElementById('timer-wrap');
-    this.running = false;
   }
-
   startTimer() {
-    if (this.running) return;
-    this.start = performance.now();
-    this.running = true;
+    if (this.startedAt) return;
+    this.startedAt = performance.now();
     this.wrap.classList.remove('hidden');
-    this._tick();
   }
-
   stopTimer() {
-    this.running = false;
+    if (this.endedAt == null) this.endedAt = performance.now();
   }
-
   elapsed() {
-    if (!this.start) return 0;
-    return performance.now() - this.start;
+    if (!this.startedAt) return 0;
+    const end = this.endedAt ?? performance.now();
+    return end - this.startedAt;
   }
-
-  _tick() {
-    if (!this.running) return;
-    const elapsed = performance.now() - this.start;
-    const remaining = Math.max(0, this.duration - elapsed);
-    const total = Math.ceil(remaining / 1000);
-    const m = Math.floor(total / 60).toString().padStart(2, '0');
-    const s = (total % 60).toString().padStart(2, '0');
-    this.el.textContent = `${m}:${s}`;
-    if (remaining < 30000) this.el.classList.add('warn');
-    if (remaining <= 0 && !this.expired) {
+  remaining() {
+    if (!this.startedAt) return this.durationMs;
+    const e = performance.now() - this.startedAt;
+    return Math.max(0, this.durationMs - e);
+  }
+  // 0..1 progress (0 = just started, 1 = expired). Used for water rise.
+  progress() {
+    if (!this.startedAt) return 0;
+    const e = performance.now() - this.startedAt;
+    return Math.max(0, Math.min(1, e / this.durationMs));
+  }
+  tick() {
+    if (!this.startedAt || this.expired) return;
+    const r = this.remaining();
+    const m = Math.floor(r / 60000);
+    const s = Math.floor((r % 60000) / 1000);
+    this.el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    if (r < 30000) this.el.classList.add('warn');
+    if (r === 0) {
       this.expired = true;
-      this.running = false;
-      if (this.onExpire) this.onExpire();
-      return;
+      this.endedAt = performance.now();
+      if (this.onTimeout) this.onTimeout();
     }
-    requestAnimationFrame(() => this._tick());
   }
 }
 
-export function showPrompt(text, color) {
-  const p = document.getElementById('prompt');
-  p.classList.remove('hidden');
-  p.innerHTML = text;
-  if (color) p.style.borderColor = color;
+const promptEl = () => document.getElementById('prompt');
+export function showPrompt(html) {
+  const el = promptEl();
+  el.innerHTML = html;
+  el.classList.remove('hidden');
 }
 export function hidePrompt() {
-  document.getElementById('prompt').classList.add('hidden');
+  promptEl().classList.add('hidden');
+}
+
+const noticeEl = () => document.getElementById('big-notice');
+let noticeTimer = null;
+export function showBigNotice(html, durationMs = 4500) {
+  const el = noticeEl();
+  el.innerHTML = html;
+  el.classList.remove('hidden');
+  if (noticeTimer) clearTimeout(noticeTimer);
+  if (durationMs > 0) {
+    noticeTimer = setTimeout(() => el.classList.add('hidden'), durationMs);
+  }
+}
+export function hideBigNotice() {
+  noticeEl().classList.add('hidden');
+}
+
+// ---- Touch UI: virtual joystick + interact + jump button ----
+export function setupTouchUI({ player, onInteract }) {
+  const isTouchDevice = (matchMedia('(pointer: coarse)').matches) || ('ontouchstart' in window);
+  const ui = document.getElementById('touch-ui');
+  if (!isTouchDevice) {
+    ui.classList.add('hidden');
+    return;
+  }
+  ui.classList.remove('hidden');
+
+  const zone = document.getElementById('joystick-zone');
+  const thumb = document.getElementById('joystick-thumb');
+  let activeId = -1;
+  let centerX = 0, centerY = 0;
+  const RADIUS = 56;
+
+  function reset() {
+    thumb.style.transform = 'translate(-50%, -50%)';
+    player.setTouchMove(0, 0);
+  }
+
+  zone.addEventListener('touchstart', (e) => {
+    if (activeId !== -1) return;
+    const t = e.changedTouches[0];
+    activeId = t.identifier;
+    const rect = zone.getBoundingClientRect();
+    centerX = rect.left + rect.width / 2;
+    centerY = rect.top + rect.height / 2;
+    e.preventDefault();
+  }, { passive: false });
+
+  zone.addEventListener('touchmove', (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier !== activeId) continue;
+      let dx = t.clientX - centerX;
+      let dy = t.clientY - centerY;
+      const mag = Math.hypot(dx, dy);
+      if (mag > RADIUS) {
+        dx = (dx / mag) * RADIUS;
+        dy = (dy / mag) * RADIUS;
+      }
+      thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      const nx = dx / RADIUS;
+      const ny = dy / RADIUS;
+      player.setTouchMove(nx, ny);
+      e.preventDefault();
+      return;
+    }
+  }, { passive: false });
+
+  const endHandler = (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === activeId) {
+        activeId = -1;
+        reset();
+      }
+    }
+  };
+  zone.addEventListener('touchend', endHandler);
+  zone.addEventListener('touchcancel', endHandler);
+
+  const interactBtn = document.getElementById('touch-interact');
+  interactBtn.addEventListener('touchstart', (e) => { e.preventDefault(); onInteract && onInteract(); }, { passive: false });
+  interactBtn.addEventListener('click', (e) => { e.preventDefault(); onInteract && onInteract(); });
+
+  const jumpBtn = document.getElementById('touch-jump');
+  const jumpDown = (e) => { e.preventDefault(); player.setSwimUpInput(1); };
+  const jumpUp = () => { player.setSwimUpInput(0); };
+  jumpBtn.addEventListener('touchstart', jumpDown, { passive: false });
+  jumpBtn.addEventListener('touchend', jumpUp);
+  jumpBtn.addEventListener('touchcancel', jumpUp);
+  jumpBtn.addEventListener('mousedown', jumpDown);
+  jumpBtn.addEventListener('mouseup', jumpUp);
+  jumpBtn.addEventListener('mouseleave', jumpUp);
+
+  const diveBtn = document.getElementById('touch-dive');
+  if (diveBtn) {
+    const diveDown = (e) => { e.preventDefault(); player.setSwimDownInput(1); };
+    const diveUp = () => { player.setSwimDownInput(0); };
+    diveBtn.addEventListener('touchstart', diveDown, { passive: false });
+    diveBtn.addEventListener('touchend', diveUp);
+    diveBtn.addEventListener('touchcancel', diveUp);
+    diveBtn.addEventListener('mousedown', diveDown);
+    diveBtn.addEventListener('mouseup', diveUp);
+    diveBtn.addEventListener('mouseleave', diveUp);
+  }
+}
+
+// Show/hide the dive (descend) touch button as the player enters/leaves swim mode.
+export function setDiveButtonVisible(visible) {
+  const btn = document.getElementById('touch-dive');
+  if (!btn) return;
+  btn.classList.toggle('hidden', !visible);
 }

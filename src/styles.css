@@ -23,6 +23,8 @@ html, body {
   font-family: 'Tajawal', 'Segoe UI', system-ui, -apple-system, sans-serif;
   overflow: hidden;
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
 }
 
 #game-canvas {
@@ -43,18 +45,25 @@ html, body {
   justify-content: center;
   background: radial-gradient(circle at center, rgba(20, 20, 40, 0.82), rgba(0,0,0,0.95));
   backdrop-filter: blur(8px);
+  padding: 16px;
 }
 
 .overlay.hidden, .hidden { display: none !important; }
 
 .panel {
-  width: min(440px, 92vw);
+  width: min(440px, 96vw);
+  max-height: 92vh;
+  overflow-y: auto;
   background: linear-gradient(180deg, var(--bg-1), var(--bg-2));
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 28px 26px 22px;
   box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 2px 0 rgba(255,255,255,0.04) inset;
   text-align: center;
+}
+
+.panel.admin-panel {
+  width: min(720px, 96vw);
 }
 
 .panel h1 {
@@ -125,6 +134,47 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow
 .hint.error { color: var(--danger); }
 .hint.ok { color: var(--good); }
 
+/* Admin dashboard */
+#admin-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.admin-stat {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.admin-stat b { color: var(--text); font-size: 18px; display: block; }
+#admin-list {
+  text-align: right;
+  max-height: 50vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+.admin-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  align-items: center;
+}
+.admin-row.head { font-weight: 700; color: var(--muted); background: rgba(255,255,255,0.03); }
+.admin-row:last-child { border-bottom: 0; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+.badge.win { background: rgba(108, 255, 163, 0.16); color: var(--good); }
+.badge.lose { background: rgba(255, 93, 108, 0.18); color: var(--danger); }
+.badge.in-progress { background: rgba(92, 209, 255, 0.18); color: var(--accent-2); }
+
 /* HUD */
 #hud {
   position: fixed;
@@ -172,46 +222,65 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow
 #timer { font-size: 18px; font-weight: 700; letter-spacing: 1px; }
 #timer.warn { color: #fff; background: var(--danger); padding: 2px 10px; border-radius: 6px; }
 
-#inventory {
+#live-equation {
   position: absolute;
   bottom: 14px;
-  left: 14px;
-  background: rgba(10,10,20,0.7);
+  left: 50%;
+  transform: translateX(-50%);
+  /* Always read left-to-right regardless of the page's RTL direction. */
+  direction: ltr;
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  background: rgba(10,10,20,0.72);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 10px 12px;
-  pointer-events: auto;
-  min-width: 220px;
+  padding: 8px 16px;
+  pointer-events: none;
+  font-size: 22px;
+  letter-spacing: 4px;
+  max-width: 90vw;
+  unicode-bidi: isolate;
 }
-.inv-title { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-#keys-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.key-chip {
-  width: 26px;
-  height: 26px;
+.le-label {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0;
+  /* Keep the Arabic label readable RTL even though the parent is LTR. */
+  direction: rtl;
+  unicode-bidi: isolate;
+}
+#le-tokens {
+  display: inline-flex;
+  flex-direction: row;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-weight: 700;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+#le-tokens .le-tok {
+  display: inline-block;
+  padding: 2px 8px;
   border-radius: 6px;
-  border: 2px solid rgba(0,0,0,0.4);
-  box-shadow: 0 0 8px rgba(255,255,255,0.15) inset;
-  position: relative;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
 }
-.key-chip.dim { opacity: 0.18; filter: grayscale(0.6); }
-
-#equation-bar {
-  position: absolute;
-  bottom: 14px;
-  right: 14px;
-  background: rgba(10,10,20,0.7);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 10px 14px;
-  pointer-events: auto;
-  min-width: 280px;
-  text-align: center;
+.ltr-eq {
+  display: inline-block;
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-weight: 700;
+  letter-spacing: 1px;
 }
-.eq-title { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-#equation-text { font-size: 22px; font-weight: 800; min-height: 32px; letter-spacing: 2px; }
-#equation-result { font-size: 12px; color: var(--muted); min-height: 18px; }
-.eq-hint { font-size: 11px; color: var(--muted); margin-top: 4px; opacity: 0.85; }
-#submit-eq { padding: 8px 14px; font-size: 13px; margin-top: 6px; }
+#le-tokens .le-tok small {
+  display: block;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0;
+  font-weight: 400;
+}
 
 .prompt {
   position: absolute;
@@ -224,8 +293,33 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow
   padding: 8px 14px;
   font-size: 14px;
   pointer-events: none;
+  white-space: nowrap;
 }
 .prompt b { color: var(--accent); }
+
+.big-notice {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(255,93,108,0.95), rgba(180,40,60,0.95));
+  border: 2px solid #fff;
+  color: #fff;
+  border-radius: 14px;
+  padding: 16px 22px;
+  font-size: 18px;
+  font-weight: 800;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 18px 42px rgba(0,0,0,0.55);
+  max-width: 86vw;
+  line-height: 1.6;
+  animation: bigNotice 0.6s ease;
+}
+@keyframes bigNotice {
+  from { transform: translateX(-50%) scale(0.85); opacity: 0; }
+  to   { transform: translateX(-50%) scale(1); opacity: 1; }
+}
 
 #crosshair {
   position: absolute;
@@ -237,11 +331,75 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow
   pointer-events: none;
 }
 
-/* Underwater overlay tint */
-body.underwater #game-canvas {
-  filter: hue-rotate(-25deg) saturate(1.2);
+/* Touch UI */
+#touch-ui {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
-body.underwater::after {
+#joystick-zone {
+  position: absolute;
+  bottom: 28px;
+  right: 28px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: rgba(20, 20, 30, 0.45);
+  border: 2px solid rgba(255,255,255,0.18);
+  pointer-events: auto;
+  touch-action: none;
+}
+#joystick-thumb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.touch-btn {
+  position: absolute;
+  bottom: 36px;
+  width: 76px;
+  height: 76px;
+  padding: 0;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(220,220,240,0.95));
+  color: #0a0a14;
+  font-size: 22px;
+  font-weight: 800;
+  border: 2px solid rgba(255,255,255,0.5);
+  pointer-events: auto;
+  margin: 0;
+}
+#touch-interact { left: 36px; }
+#touch-jump { left: 130px; bottom: 110px; }
+
+/* Result overlay treasure styling */
+.result-panel.win {
+  background: linear-gradient(180deg, #2a210a, #4d3a0e 60%, #654a0f);
+  border: 2px solid #ffcf5c;
+  box-shadow: 0 0 60px rgba(255,207,92,0.4), 0 30px 80px rgba(0,0,0,0.6);
+}
+.result-panel.win h1 {
+  font-size: 36px;
+  -webkit-text-fill-color: transparent;
+  background: linear-gradient(90deg, #ffe57a, #fff7c4, #ffcf5c);
+  -webkit-background-clip: text;
+}
+.result-panel.lose {
+  background: linear-gradient(180deg, #2a0a14, #4a0e1c);
+  border: 2px solid #ff5d6c;
+}
+
+/* Underwater visual tint when player head is submerged */
+body.submerged #game-canvas {
+  filter: hue-rotate(-25deg) saturate(1.25) brightness(0.85);
+}
+body.submerged::after {
   content: '';
   position: fixed;
   inset: 0;
@@ -250,4 +408,13 @@ body.underwater::after {
     radial-gradient(ellipse at 50% 30%, rgba(0,180,220,0.0) 30%, rgba(0,40,80,0.55) 100%),
     linear-gradient(180deg, rgba(0,80,140,0.18), rgba(0,30,60,0.32));
   z-index: 40;
+}
+body.submerged #crosshair { color: rgba(180,230,255,0.9); }
+
+@media (max-width: 720px), (pointer: coarse) {
+  .prompt { font-size: 13px; bottom: 55%; }
+  #live-equation { font-size: 16px; padding: 6px 10px; bottom: 12px; }
+  #player-info { font-size: 12px; padding: 6px 10px; }
+  #timer { font-size: 15px; }
+  .big-notice { font-size: 15px; padding: 12px 16px; top: 16%; }
 }
